@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+BOXFACTOR=0.2
 import os.path
 import time
 import sys
@@ -51,7 +52,7 @@ class MyApp(App):
     self.im = Image(source=args.image)
     Window.size = tuple(i*1.2 for i in self.im.texture_size)
     self.layout.add_widget(self.im)
-    self.box = Box(pos_hint={'center_x': 0.5, 'center_y': 0.5}, size_hint = (0.025, 0.025), color = INITCOLOR)
+    self.box = Box(pos_hint={'center_x': 0.5, 'center_y': 0.5}, size_hint = (BOXFACTOR, BOXFACTOR), color = INITCOLOR)
     self.layout.add_widget(self.box)
     return self.layout
 
@@ -72,8 +73,8 @@ def serialLoop(kivyApp):
         # step in controller is around 1, color is in range 0..1, use one step as 1/1000 (maybe too small)
         cc[knob] = max(min(INITCOLOR[knob] + value/1000., 1), 0)
         #print("RGB(0-1): {:.3f},{:.3f},{:.3f}".format(cc[0], cc[1], cc[2]))
-        controller_state = "{}; {}; {} ;RGB(0-255); {:.0f},{:.0f},{:.0f}".format(
-          time.ctime(), respondent, lightlevel,
+        controller_state = "{}; {}; {}; {} ;RGB(0-255); {:.0f},{:.0f},{:.0f}".format(
+          time.ctime(), args.image, respondent, lightlevel,
           [c*255 for c in cc][0], [c*255 for c in cc][1], [c*255 for c in cc][2])
         print(controller_state)
         kivyApp.box.color = cc
@@ -82,8 +83,8 @@ def serialLoop(kivyApp):
         c_hsv = list( colorsys.rgb_to_hsv(cc[0], cc[1], cc[2]) )
         init_hsv = colorsys.rgb_to_hsv(INITCOLOR[0], INITCOLOR[1], INITCOLOR[2])
         c_hsv[knob] = max(min(init_hsv[knob] + value/1000., 1), 0)
-        controller_state = "{}; {}; {}; HSV; {:.3f},{:.3f},{:.3f}".format(
-          time.ctime(), respondent, lightlevel,
+        controller_state = "{}; {}; {}; {}; HSV; {:.3f},{:.3f},{:.3f}".format(
+          time.ctime(), args.image, respondent, lightlevel,
           360*c_hsv[0], c_hsv[1], c_hsv[2])
         print(controller_state)
         c_rgb = list( colorsys.hsv_to_rgb(c_hsv[0], c_hsv[1], c_hsv[2]) )
@@ -98,7 +99,7 @@ def inputLoop():
   time.sleep(3)
   print('# # # # # # # # # # # # # # # # # # # # # #')
   print(' # # # # # # # # # # # # # # # # # # # # # #')
-  print('Anytime, type in respondent(num),lightlevel(num) and press enter to set it.')
+  print('Anytime, type in respondent(num), lightlevel(num) and press enter to set it.')
   print('Or type S (capital) and press enter to store current settings to controller.csv in current dir.')
   while True:
     human = input()
