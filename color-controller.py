@@ -56,6 +56,33 @@ class MyApp(App):
     self.layout.add_widget(self.box)
     return self.layout
 
+def replayLoop(kivyApp):
+  global respondent, lightlevel, controller_state
+  time.sleep(1) # wait for kivy to initialize
+  fd = open('controller.csv')
+  for current_line in fd.readlines():
+    entry = current_line.split(';')
+    entry_image = entry[1]
+    entry_cspace = entry[4]
+    entry_color = entry[5].split(',')
+    entry_color = [ float(c) for c in entry_color ]
+    if entry_image.strip() != args.image:
+      print('SKIPPING(image mismatch): {}'.format(current_line), end = '')
+      continue
+    print(current_line, end = '')
+    if entry_cspace == " RGB ":
+      entry_rgb = [ c/255 for c in entry_color ]
+      entry_rgb.append(1)
+      kivyApp.box.color = entry_rgb
+    else:
+      # convert color from hsv to rgb
+      entry_rgb = list( colorsys.hsv_to_rgb(entry_color[0]/360, entry_color[1], entry_color[2]) )
+      entry_rgb.append(1)
+      kivyApp.box.color = tuple(entry_rgb)
+    time.sleep(float(args.replay))
+  print('The file controller.csv has been replayed, you may close the window.')
+
+
 def serialLoop(kivyApp):
   ''' NB: serial device path might differ on some machines '''
   global respondent, lightlevel, controller_state
@@ -72,8 +99,7 @@ def serialLoop(kivyApp):
       if args.rgb:
         # step in controller is around 1, color is in range 0..1, use one step as 1/1000 (maybe too small)
         cc[knob] = max(min(INITCOLOR[knob] + value/1000., 1), 0)
-        #print("RGB(0-1): {:.3f},{:.3f},{:.3f}".format(cc[0], cc[1], cc[2]))
-        controller_state = "{}; {}; {}; {} ;RGB(0-255); {:.0f},{:.0f},{:.0f}".format(
+        controller_state = "{}; {}; {}; {}; RGB ; {:.0f},{:.0f},{:.0f}".format(
           time.ctime(), args.image, respondent, lightlevel,
           [c*255 for c in cc][0], [c*255 for c in cc][1], [c*255 for c in cc][2])
         print(controller_state)
@@ -83,7 +109,7 @@ def serialLoop(kivyApp):
         c_hsv = list( colorsys.rgb_to_hsv(cc[0], cc[1], cc[2]) )
         init_hsv = colorsys.rgb_to_hsv(INITCOLOR[0], INITCOLOR[1], INITCOLOR[2])
         c_hsv[knob] = max(min(init_hsv[knob] + value/1000., 1), 0)
-        controller_state = "{}; {}; {}; {}; HSV; {:.3f},{:.3f},{:.3f}".format(
+        controller_state = "{}; {}; {}; {}; HSV ; {:.3f},{:.3f},{:.3f}".format(
           time.ctime(), args.image, respondent, lightlevel,
           360*c_hsv[0], c_hsv[1], c_hsv[2])
         print(controller_state)
@@ -127,6 +153,7 @@ parser.add_argument('image', help='Background image (png format)')
 parser.add_argument('--inithsv', help='initial color in format "h[0-360],s[0-1],v[0-1]"')
 parser.add_argument('--initrgb', help='initial color in format "r,g,b", values [0-255]')
 parser.add_argument('--rgb', action='store_const', const=True, default=False, help='Controler input in rgb, default is hsv')
+parser.add_argument('--replay', metavar='N', default=False, help='Replay stored data from controller.csv, wait N seconds between changes')
 
 args = parser.parse_args()
 
@@ -157,8 +184,11 @@ if not os.path.isfile(args.image):
   exit(127)
 
 Kivy = MyApp()
-_thread.start_new_thread(serialLoop,(Kivy,))
-_thread.start_new_thread(inputLoop, tuple())
+if args.replay != False:
+  _thread.start_new_thread(replayLoop, (Kivy,))
+else:
+  _thread.start_new_thread(serialLoop, (Kivy,))
+  _thread.start_new_thread(inputLoop, tuple())
 
 Kivy.run()
 
