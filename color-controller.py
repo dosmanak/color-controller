@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-BOXFACTOR=0.2
+BOXFACTOR=0.5
 import os.path
 import time
 import sys
@@ -108,7 +108,12 @@ def serialLoop(kivyApp):
         # convert color from rgb to hsv, update changed value, convrt back to rgb
         c_hsv = list( colorsys.rgb_to_hsv(cc[0], cc[1], cc[2]) )
         init_hsv = colorsys.rgb_to_hsv(INITCOLOR[0], INITCOLOR[1], INITCOLOR[2])
-        c_hsv[knob] = max(min(init_hsv[knob] + value/1000., 1), 0)
+        # step for saturation is 1/100, for hue it is 1/1000 
+        if knob in [1,2]:
+          step = value/100
+        else:
+          step = value/1000
+        c_hsv[knob] = max(min(init_hsv[knob] + step, 1), 0)
         controller_state = "{}; {}; {}; {}; HSV ; {:.3f},{:.3f},{:.3f}".format(
           time.ctime(), args.image, respondent, lightlevel,
           360*c_hsv[0], c_hsv[1], c_hsv[2])
